@@ -19,7 +19,7 @@ app.get('/', (request, response) => {
 
 app.get('/location', locationHandler);
 app.get('/weather', weatherHandler);
-app.get('/trails', trailHandler);
+app.get('/trails', trailsHandler);
 
 app.use(errorHandler);
 let lat;
@@ -56,18 +56,23 @@ function weatherHandler(request, response) {
 
 }
 
-function trailHandler(request, response) {
-    
-    superagent(`https://www.hikingproject.com/data/get-trails?lat=${lat}&lon=${lon}&&maxDistance=500&key=${process.env.TRAIL_API_KEY}`)
-        .then(trailData => {
-            const trailSummaries = trailData.body.trails.map(trail => {
-                return new Trail(trail);
-            });
-            response.status(200).json(trailSummaries);
-        })
-        .catch(err => errorHandler(err, request, response));
-
+function trailsHandler(request, response) {
+    const lat = request.query.latitude;
+    const lon = request.query.longitude;
+    getTrailData(lat, lon)
+        .then((trailData) =>
+         response.status(200).json(trailData));
 }
+
+function getTrailData(lat, lon) {
+    const url = `https://www.hikingproject.com/data/get-trails?lat=${lat}&lon=${lon}&maxDistance=500&key=${process.env.TRAIL_API_KEY}`; 
+    return superagent.get(url).then((trailData) => {
+        let trailsSummaries = trailData.body.trails.map((val) => {
+            return new Trail(val);
+        }); return trailsSummaries;
+    });
+}
+
 app.use('*', notFoundHandler);
 //constructorfor yhe trail
 
@@ -85,17 +90,18 @@ function Weather(day) {
     this.time = new Date(day.valid_date).toDateString();
 }
 
+//constructorfor yhe trail
 function Trail(trailsCon) {
     this.name = trailsCon.name;
     this.location = trailsCon.location;
     this.length = trailsCon.length;
     this.stars = trailsCon.stars;
-    this.star_votes = trailsCon.star_votes;
+    this.star_votes = trailsCon.starVotes;
     this.summary = trailsCon.summary;
     this.trail_url = trailsCon.url;
-    this.conditions = trailsCon.conditions;
-    this.condition_date = trailsCon.conditionDate.slice(0, 11);
-    this.condition_time = trailsCon.conditionTime.slice(-8);
+    this.conditions = trailsCon.conditionDetails;
+    this.condition_date = trailsCon.conditionDate.substring(0, 11);
+    this.condition_time = trailsCon.conditionDate.substring(11);
 
 }
 
